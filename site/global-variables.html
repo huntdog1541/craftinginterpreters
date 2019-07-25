@@ -10,7 +10,8 @@
 <link rel="stylesheet" type="text/css" href="style.css" />
 
 <!-- Oh, God, Source Code Pro is so beautiful it makes me want to cry. -->
-<link href='http://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,600' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,600' rel='stylesheet' type='text/css'>
+
 <link rel="icon" type="image/png" href="image/favicon.png" />
 <script src="jquery-1.10.1.min.js"></script>
 <script src="script.js"></script>
@@ -248,8 +249,6 @@ add after <em>declaration</em>()</div>
 <pre><span></span><span class="k">static</span> <span class="kt">void</span> <span class="nf">statement</span><span class="p">()</span> <span class="p">{</span>  
   <span class="k">if</span> <span class="p">(</span><span class="n">match</span><span class="p">(</span><span class="n">TOKEN_PRINT</span><span class="p">))</span> <span class="p">{</span>
     <span class="n">printStatement</span><span class="p">();</span>      
-  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>                 
-    <span class="n">expressionStatement</span><span class="p">();</span> 
   <span class="p">}</span>                        
 <span class="p">}</span>                          
 </pre></div>
@@ -408,7 +407,19 @@ in <em>disassembleInstruction</em>()</div>
 
 <p>Exciting!</p>
 <h3><a href="#expression-statements" name="expression-statements"><small>21&#8202;.&#8202;1&#8202;.&#8202;2</small> Expression statements</a></h3>
-<p>Wait until you see the next statement:</p>
+<p>Wait until you see the next statement. If we <em>don&rsquo;t</em> see a <code>print</code> keyword, then
+we must be looking at an expression statement:</p>
+<div class="codehilite"><pre class="insert-before"><span></span>    <span class="n">printStatement</span><span class="p">();</span>     
+</pre><div class="source-file"><em>compiler.c</em><br>
+in <em>statement</em>()</div>
+<pre class="insert"><span></span>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>                
+    <span class="n">expressionStatement</span><span class="p">();</span>
+</pre><pre class="insert-after"><span></span>  <span class="p">}</span>                       
+</pre></div>
+
+<div class="source-file-narrow"><em>compiler.c</em>, in <em>statement</em>()</div>
+
+<p>It&rsquo;s parsed like so:</p>
 <div class="codehilite"><div class="source-file"><em>compiler.c</em><br>
 add after <em>expression</em>()</div>
 <pre><span></span><span class="k">static</span> <span class="kt">void</span> <span class="nf">expressionStatement</span><span class="p">()</span> <span class="p">{</span>                        
@@ -441,7 +452,8 @@ in enum <em>OpCode</em></div>
 
 <div class="source-file-narrow"><em>chunk.h</em>, in enum <em>OpCode</em></div>
 
-<p>As the name implies, this pops the top value off the stack and forgets it:</p>
+<p>As the name implies, that instruction pops the top value off the stack and
+forgets it:</p>
 <div class="codehilite"><pre class="insert-before"><span></span>      <span class="k">case</span> <span class="nl">OP_FALSE</span><span class="p">:</span> <span class="n">push</span><span class="p">(</span><span class="n">BOOL_VAL</span><span class="p">(</span><span class="nb">false</span><span class="p">));</span> <span class="k">break</span><span class="p">;</span>
 </pre><div class="source-file"><em>vm.c</em><br>
 in <em>run</em>()</div>
@@ -927,6 +939,7 @@ in <em>run</em>()</div>
 <pre class="insert"><br><span></span>      <span class="k">case</span> <span class="nl">OP_SET_GLOBAL</span><span class="p">:</span> <span class="p">{</span>                                     
         <span class="n">ObjString</span><span class="o">*</span> <span class="n">name</span> <span class="o">=</span> <span class="n">READ_STRING</span><span class="p">();</span>                        
         <span class="k">if</span> <span class="p">(</span><span class="n">tableSet</span><span class="p">(</span><span class="o">&amp;</span><span class="n">vm</span><span class="p">.</span><span class="n">globals</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">peek</span><span class="p">(</span><span class="mi">0</span><span class="p">)))</span> <span class="p">{</span>             
+          <span class="n">tableDelete</span><span class="p">(</span><span class="o">&amp;</span><span class="n">vm</span><span class="p">.</span><span class="n">globals</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span> <span name="delete"></span>
           <span class="n">runtimeError</span><span class="p">(</span><span class="s">&quot;Undefined variable &#39;%s&#39;.&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">-&gt;</span><span class="n">chars</span><span class="p">);</span>
           <span class="k">return</span> <span class="n">INTERPRET_RUNTIME_ERROR</span><span class="p">;</span>                       
         <span class="p">}</span>                                                       
@@ -941,6 +954,12 @@ in <em>run</em>()</div>
 globals hash table. If the variable hasn&rsquo;t been defined yet, it&rsquo;s a runtime
 error to try to assign to it. Lox <a href="statements-and-state.html#design-note">doesn&rsquo;t do implicit variable
 declaration</a>.</p>
+<aside name="delete">
+<p>The call to <code>tableSet()</code> stores the value in the global variable table even if
+the variable wasn&rsquo;t previously defined. That fact is visible in a REPL session,
+since it keeps running even after the runtime error is reported. So we also take
+care to delete that zombie value from the table.</p>
+</aside>
 <p>The other difference is that setting a variable doesn&rsquo;t pop the value off the
 stack. Remember, assignment is an expression, so it needs to leave that value
 there in case the assignment is nested inside some larger expression.</p>
@@ -966,7 +985,7 @@ parsed roughly like:</p>
 <p>Obviously, <code>a * b</code> isn&rsquo;t a <span name="do">valid</span> assignment target, so
 this should be a syntax error. But here&rsquo;s what our parser does:</p>
 <aside name="do">
-<p>Wouldn&rsquo;t it be wild if <code>a * b</code> <em>was</em> as valid assignment target, though? You
+<p>Wouldn&rsquo;t it be wild if <code>a * b</code> <em>was</em> a valid assignment target, though? You
 could imagine some algebra-like language that tried to divide the assigned value
 up in some reasonable way and distribute it to <code>a</code> and <code>b</code>. &hellip;That&rsquo;s probably
 a terrible idea.</p>

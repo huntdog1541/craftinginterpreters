@@ -10,7 +10,8 @@
 <link rel="stylesheet" type="text/css" href="style.css" />
 
 <!-- Oh, God, Source Code Pro is so beautiful it makes me want to cry. -->
-<link href='http://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,600' rel='stylesheet' type='text/css'>
+<link href='https://fonts.googleapis.com/css?family=Source+Code+Pro:400|Source+Sans+Pro:300,400,600' rel='stylesheet' type='text/css'>
+
 <link rel="icon" type="image/png" href="image/favicon.png" />
 <script src="jquery-1.10.1.min.js"></script>
 <script src="script.js"></script>
@@ -506,8 +507,9 @@ array which pointed into the original source code string, bad things would
 happen. So, for literals, we preemptively copy the characters over to the heap.
 This way, every ObjString reliably owns its character array and can free it.</p>
 <p>The real work of creating a string object happens in this function:</p>
-<div class="codehilite"><div class="source-file"><em>object.c</em></div>
-<pre><span></span><span class="k">static</span> <span class="n">ObjString</span><span class="o">*</span> <span class="nf">allocateString</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">chars</span><span class="p">,</span> <span class="kt">int</span> <span class="n">length</span><span class="p">)</span> <span class="p">{</span>
+<div class="codehilite"><pre class="insert-before"><span></span><span class="cp">#include</span> <span class="cpf">&quot;vm.h&quot;                                            </span><span class="cp"></span>
+<br></pre><div class="source-file"><em>object.c</em></div>
+<pre class="insert"><span></span><span class="k">static</span> <span class="n">ObjString</span><span class="o">*</span> <span class="nf">allocateString</span><span class="p">(</span><span class="kt">char</span><span class="o">*</span> <span class="n">chars</span><span class="p">,</span> <span class="kt">int</span> <span class="n">length</span><span class="p">)</span> <span class="p">{</span>
   <span class="n">ObjString</span><span class="o">*</span> <span class="n">string</span> <span class="o">=</span> <span class="n">ALLOCATE_OBJ</span><span class="p">(</span><span class="n">ObjString</span><span class="p">,</span> <span class="n">OBJ_STRING</span><span class="p">);</span> 
   <span class="n">string</span><span class="o">-&gt;</span><span class="n">length</span> <span class="o">=</span> <span class="n">length</span><span class="p">;</span>                                 
   <span class="n">string</span><span class="o">-&gt;</span><span class="n">chars</span> <span class="o">=</span> <span class="n">chars</span><span class="p">;</span>
@@ -1047,13 +1049,13 @@ nasty conundrum: deciding how to represent strings.</p>
 <ol>
 <li>
 <p><strong>What is a single &ldquo;character&rdquo; in a string?</strong> How many different values are
-    there and what do they represent? The first big standard answer for this was
-    <a href="https://en.wikipedia.org/wiki/ASCII">ASCII</a>. It gave you 127 different character values and specified what
-    they were. It was great&hellip; if you only ever cared about English. While it
-    has weird, mostly-forgotten characters like &ldquo;record separator&rdquo; and
-    &ldquo;synchronous idle&rdquo;, it doesn&rsquo;t have a single umlaut, acute, or grave. It
-    can&rsquo;t represent &ldquo;jalapeño&rdquo;, &ldquo;na&iuml;ve&rdquo;, <span name="gruyere">&ldquo;Gruyère&rdquo;</span>,
-    or &ldquo;Mötley Crüe&rdquo;.</p>
+    there and what do they represent? The first widely-adopted standard answer
+    to this was <a href="https://en.wikipedia.org/wiki/ASCII">ASCII</a>. It gave you 127 different character values and
+    specified what they were. It was great&hellip; if you only ever cared about
+    English. While it has weird, mostly-forgotten characters like &ldquo;record
+    separator&rdquo; and &ldquo;synchronous idle&rdquo;, it doesn&rsquo;t have a single umlaut, acute,
+    or grave. It can&rsquo;t represent &ldquo;jalapeño&rdquo;, &ldquo;na&iuml;ve&rdquo;, <span
+    name="gruyere">&ldquo;Gruyère&rdquo;</span>, or &ldquo;Mötley Crüe&rdquo;.</p>
 <aside markdown="1" name="gruyere">
 
 <p>It goes without saying that a language that does not let one discuss Gruyère

@@ -627,11 +627,12 @@ error:
 Those are the table stakes if you want to get in the parser game at all, but you
 really want to raise the ante beyond that. A decent parser should:
 
-*   **Be fast.** Computers are thousands of times faster than when parser
-    technology was first invented. The days of needing to optimize your parser
-    so that it could get through an entire source file during a coffee break are
-    over. But programmer expectations have risen as quickly, if not faster. They
-    expect their editors to reparse files in milliseconds after every keystroke.
+*   **Be fast.** Computers are thousands of times faster than they were when
+    parser technology was first invented. The days of needing to optimize your
+    parser so that it could get through an entire source file during a coffee
+    break are over. But programmer expectations have risen as quickly, if not
+    faster. They expect their editors to reparse files in milliseconds after
+    every keystroke.
 
 *   **Report as many distinct errors as there are.** Aborting after the first
     error is easy to implement, but it's annoying for users if every time they
@@ -768,7 +769,7 @@ parser's own state?
 
 With recursive descent, the parser's state -- which rules it is in the middle of
 recognizing -- is not stored explicitly in fields. Instead, we use Java's
-own callstack to track what the parser is doing. Each rule in the process of
+own call stack to track what the parser is doing. Each rule in the process of
 being parsed is a callframe on the stack. In order to reset that state, we need
 to clear out those callframes.
 

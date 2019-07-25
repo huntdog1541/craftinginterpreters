@@ -120,7 +120,7 @@ There's a lot of state we need to track in the compiler to make this whole thing
 go, so let's get started there. In jlox, we used a linked chain of "environment"
 HashMaps to track what local variables are currently in scope. That's sort of
 the classic, schoolbook way of representing lexical scope. For clox, as usual,
-we're going a little closer to the metal. The state all lives in this new
+we're going a little closer to the metal. All of the state lives in this new
 struct:
 
 ^code compiler-struct (1 before, 2 after)
@@ -188,7 +188,7 @@ Here's a little function to initialize the compiler:
 
 When we first start up the VM, we call it to get everything into a clean state:
 
-^code compiler (1 before, 2 after)
+^code compiler (1 before, 1 after)
 
 Our compiler has the data it needs, but not the operations on that data. There's
 no way to create and destroy scopes, or add and resolve variables. We'll add
@@ -398,6 +398,13 @@ We detect that error like so:
 
 ^code existing-in-scope (1 before, 2 after)
 
+<aside name="negative">
+
+Don't worry about that odd `depth != -1` part yet. We'll get to what that's
+about later.
+
+</aside>
+
 Local variables are appended to the array when they're declared, which means the
 current scope is always at the end of the array. When we declare a new variable,
 we start at the end and work backwards looking for an existing variable with the
@@ -577,8 +584,9 @@ No, not even Scheme.
 
 </aside>
 
-We've got one more edge case to deal with before we end this chapter. Take a
-look at this strange beastie:
+We've got one more edge case to deal with before we end this chapter. Recall this strange beastie we first met in [jlox's implementation of variable resolution][shadow]:
+
+[shadow]: resolving-and-binding.html#resolving-variable-declarations
 
 ```lox
 {
@@ -589,67 +597,16 @@ look at this strange beastie:
 }
 ```
 
-I know, right? What was the <span name="author">author</span> even thinking when
-they wrote this? But, really, though, what *were* they thinking? What do they
-expect this to do? If anyone were to actually write this code, they probably
-expect the `a` in the initializer to refer to the *outer* `a`. In other words,
-they are initializing the shadowing inner `a` with the value of the shadowed
-one. I suppose that's something someone could want to do.
-
-<aside name="author">
-
-I guess this is a rhetorical question since *I'm* the author of this dollop of
-code. All I had in mind was showing you some ugly corner of the language that we
-are obliged to deal with.
-
-</aside>
-
-But what about:
-
-```lox
-{
-  var a = a;
-}
-```
-
-Should this try to initialize the local `a` with the value of some
-hopefully-defined global `a`? Or does the `a` in the initializer also refer to
-the local?
-
-The key question is when, precisely, does a variable come into scope. Is a
-variable in scope in its own initializer? If the answer is "yes", that's
-definitely not <span name="lambda">*useful*</span>. The variable doesn't have a
-value yet... since we haven't finished executing its initializer.
-
-<aside name="lambda">
-
-It *could* be useful if Lox supported lambdas -- function expressions. In that
-case, the initializer could be a function that referred to the variable being
-initialized. As long as the function isn't *invoked* until after the initializer
-completes, this would be a useful way to have a recursive local function.
-
-</aside>
-
-We could answer "no" and say the variable doesn't come into being until after
-the initializer completes. That would enable the prior example. But, honestly,
-code like that is really confusing. Programmers expect code to roughly execute
-from left to right. It would feel strange if the variable didn't come into scope
-as soon as you went "past" its name.
-
-The safest solution is to simply make this a compile error. Tell the user they
-did something odd and let them sort it out. In practice, you almost never see
-code like this anyway, so it's safer to prohibit it than to try to support it
-with some behavior few users are likely to guess correctly.
-
-The way we make this work is by making "come into scope" a two-phase process:
+We slayed it then by splitting a variable's declaration into two phases, and
+we'll do that again here:
 
 <img src="image/local-variables/phases.png" alt="An example variable declaration marked 'declared uninitialized' before the variable name and 'ready for use' after the initializer." />
 
 As soon as the variable declaration begins -- in other words, before its
 initializer -- the name is declared in the current scope. The variable exists,
-but it's in a special "uninitialized" state. Then we compile the initializer. If
-at any point in that expression we resolve an identifier that points back to
-this variable, we'll see that it is not initialized yet and flag it as an error.
+but in a special "uninitialized" state. Then we compile the initializer. If at
+any point in that expression we resolve an identifier that points back to this
+variable, we'll see that it is not initialized yet and flag it as an error.
 After we finish compiling the initializer, we mark the variable as initialized
 and ready for normal use.
 

@@ -165,7 +165,7 @@ and output the right bytecode.
 First up, the front half of the compiler. This function's name should sound
 familiar:
 
-^code advance
+^code advance (1 before)
 
 Just like in jlox, it steps forward through the token stream. It asks the
 scanner for the next token and stores it for later use. Before doing that, it
@@ -193,8 +193,8 @@ happens using this:
 
 ^code error-at-current
 
-It pulls the location out of the current token in order to tell the user where
-the error occurred and forwards to `errorAt()`. More often, we'll report an
+We pull the location out of the current token in order to tell the user where
+the error occurred and forward it to `errorAt()`. More often, we'll report an
 error at the location of the token we just consumed, so we give the shorter name
 to this other function:
 
@@ -770,7 +770,7 @@ That's the whole thing. Really. Here's how the entire function works: At the
 beginning of `parsePrecedence()`, we look up a prefix parser for the current
 token. The first token is *always* going to belong to some kind of prefix
 expression, by definition. It may turn out to be nested as an operand inside one
-or more infix expressions, but as you read the code from the left to right, the
+or more infix expressions, but as you read the code from left to right, the
 first thing you hit is always some prefix expression.
 
 After parsing that, which may consume more tokens, the prefix expression is

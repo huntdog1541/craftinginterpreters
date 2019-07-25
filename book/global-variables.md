@@ -261,7 +261,12 @@ Exciting!
 
 ### Expression statements
 
-Wait until you see the next statement:
+Wait until you see the next statement. If we *don't* see a `print` keyword, then
+we must be looking at an expression statement:
+
+^code parse-expressions-statement (1 before, 1 after)
+
+It's parsed like so:
 
 ^code expression-statement
 
@@ -281,7 +286,8 @@ expression, and then an `OP_POP` instruction:
 
 ^code pop-op (1 before, 1 after)
 
-As the name implies, this pops the top value off the stack and forgets it:
+As the name implies, that instruction pops the top value off the stack and
+forgets it:
 
 ^code interpret-pop (1 before, 2 after)
 
@@ -610,6 +616,15 @@ globals hash table. If the variable hasn't been defined yet, it's a runtime
 error to try to assign to it. Lox [doesn't do implicit variable
 declaration][implicit].
 
+<aside name="delete">
+
+The call to `tableSet()` stores the value in the global variable table even if
+the variable wasn't previously defined. That fact is visible in a REPL session,
+since it keeps running even after the runtime error is reported. So we also take
+care to delete that zombie value from the table.
+
+</aside>
+
 The other difference is that setting a variable doesn't pop the value off the
 stack. Remember, assignment is an expression, so it needs to leave that value
 there in case the assignment is nested inside some larger expression.
@@ -636,7 +651,7 @@ this should be a syntax error. But here's what our parser does:
 
 <aside name="do">
 
-Wouldn't it be wild if `a * b` *was* as valid assignment target, though? You
+Wouldn't it be wild if `a * b` *was* a valid assignment target, though? You
 could imagine some algebra-like language that tried to divide the assigned value
 up in some reasonable way and distribute it to `a` and `b`. ...That's probably
 a terrible idea.

@@ -87,29 +87,27 @@ typedef struct {
   bool isLocal;
 } Upvalue;
 //< Closures not-yet
-//> Calls and Functions not-yet
-
+//> Calls and Functions function-type-enum
 typedef enum {
   TYPE_FUNCTION,
 //> Methods and Initializers not-yet
   TYPE_INITIALIZER,
   TYPE_METHOD,
 //< Methods and Initializers not-yet
-  TYPE_TOP_LEVEL
+  TYPE_SCRIPT
 } FunctionType;
-//< Calls and Functions not-yet
+//< Calls and Functions function-type-enum
 //> Local Variables compiler-struct
 
 typedef struct Compiler {
-//> Calls and Functions not-yet
-  // The compiler for the enclosing function, if any.
+//> Calls and Functions enclosing-field
   struct Compiler* enclosing;
-
-  // The function being compiled.
+//< Calls and Functions enclosing-field
+//> Calls and Functions function-fields
   ObjFunction* function;
   FunctionType type;
 
-//< Calls and Functions not-yet
+//< Calls and Functions function-fields
   Local locals[UINT8_COUNT];
   int localCount;
 //> Closures not-yet
@@ -140,21 +138,22 @@ Compiler* current = NULL;
 
 ClassCompiler* currentClass = NULL;
 //< Methods and Initializers not-yet
-/* Compiling Expressions compiling-chunk < Calls and Functions not-yet
+//> Compiling Expressions compiling-chunk
 
+/* Compiling Expressions compiling-chunk < Calls and Functions current-chunk
 Chunk* compilingChunk;
 
 static Chunk* currentChunk() {
   return compilingChunk;
 }
-
 */
-//> Calls and Functions not-yet
-
+//> Calls and Functions current-chunk
 static Chunk* currentChunk() {
   return &current->function->chunk;
 }
-//< Calls and Functions not-yet
+//< Calls and Functions current-chunk
+
+//< Compiling Expressions compiling-chunk
 //> Compiling Expressions error-at
 static void errorAt(Token* token, const char* message) {
 //> check-panic-mode
@@ -189,6 +188,7 @@ static void errorAtCurrent(const char* message) {
 }
 //< Compiling Expressions error-at-current
 //> Compiling Expressions advance
+
 static void advance() {
   parser.previous = parser.current;
 
@@ -233,8 +233,7 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
   emitByte(byte2);
 }
 //< Compiling Expressions emit-bytes
-//> Jumping Forward and Back not-yet
-
+//> Jumping Back and Forth emit-loop
 static void emitLoop(int loopStart) {
   emitByte(OP_LOOP);
 
@@ -244,20 +243,18 @@ static void emitLoop(int loopStart) {
   emitByte((offset >> 8) & 0xff);
   emitByte(offset & 0xff);
 }
-
-// Emits [instruction] followed by a placeholder for a jump offset. The
-// placeholder can be patched by calling [jumpPatch]. Returns the index
-// of the placeholder.
+//< Jumping Back and Forth emit-loop
+//> Jumping Back and Forth emit-jump
 static int emitJump(uint8_t instruction) {
   emitByte(instruction);
   emitByte(0xff);
   emitByte(0xff);
   return currentChunk()->count - 2;
 }
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth emit-jump
 //> Compiling Expressions emit-return
 static void emitReturn() {
-/* Calls and Functions not-yet < Methods and Initializers not-yet
+/* Calls and Functions return-nil < Methods and Initializers not-yet
   emitByte(OP_NIL);
 */
 //> Methods and Initializers not-yet
@@ -288,10 +285,7 @@ static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
 }
 //< Compiling Expressions emit-constant
-//> Jumping Forward and Back not-yet
-// Replaces the placeholder argument for a previous CODE_JUMP or
-// CODE_JUMP_IF instruction with an offset that jumps to the current
-// end of bytecode.
+//> Jumping Back and Forth patch-jump
 static void patchJump(int offset) {
   // -2 to adjust for the bytecode for the jump offset itself.
   int jump = currentChunk()->count - offset - 2;
@@ -303,50 +297,40 @@ static void patchJump(int offset) {
   currentChunk()->code[offset] = (jump >> 8) & 0xff;
   currentChunk()->code[offset + 1] = jump & 0xff;
 }
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth patch-jump
 //> Local Variables init-compiler
-/* Local Variables init-compiler < Calls and Functions not-yet
+/* Local Variables init-compiler < Calls and Functions init-compiler
 static void initCompiler(Compiler* compiler) {
 */
-//> Calls and Functions not-yet
-static void initCompiler(Compiler* compiler, int scopeDepth,
-                         FunctionType type) {
+//> Calls and Functions init-compiler
+static void initCompiler(Compiler* compiler, FunctionType type) {
+//> store-enclosing
   compiler->enclosing = current;
+//< store-enclosing
   compiler->function = NULL;
   compiler->type = type;
-//< Calls and Functions not-yet
+//< Calls and Functions init-compiler
   compiler->localCount = 0;
-/* Local Variables init-compiler < Calls and Functions not-yet
   compiler->scopeDepth = 0;
-*/
-//> Calls and Functions not-yet
-  compiler->scopeDepth = scopeDepth;
+//> Calls and Functions init-function
   compiler->function = newFunction();
-//< Calls and Functions not-yet
+//< Calls and Functions init-function
   current = compiler;
-//> Calls and Functions not-yet
+//> Calls and Functions init-function-name
 
-  switch (type) {
-//> Methods and Initializers not-yet
-    case TYPE_INITIALIZER:
-    case TYPE_METHOD:
-//< Methods and Initializers not-yet
-    case TYPE_FUNCTION:
-      current->function->name = copyString(parser.previous.start,
-                                           parser.previous.length);
-      break;
-    case TYPE_TOP_LEVEL:
-      current->function->name = NULL;
-      break;
+  if (type != TYPE_SCRIPT) {
+    current->function->name = copyString(parser.previous.start,
+                                         parser.previous.length);
   }
+//< Calls and Functions init-function-name
+//> Calls and Functions init-function-slot
 
-  // The first slot is always implicitly declared.
   Local* local = &current->locals[current->localCount++];
-  local->depth = current->scopeDepth;
+  local->depth = 0;
 //> Closures not-yet
   local->isUpvalue = false;
 //< Closures not-yet
-/* Calls and Functions not-yet < Methods and Initializers not-yet
+/* Calls and Functions init-function-slot < Methods and Initializers not-yet
   local->name.start = "";
   local->name.length = 0;
 */
@@ -362,39 +346,41 @@ static void initCompiler(Compiler* compiler, int scopeDepth,
     local->name.length = 0;
   }
 //< Methods and Initializers not-yet
-//< Calls and Functions not-yet
+//< Calls and Functions init-function-slot
 }
 //< Local Variables init-compiler
 //> Compiling Expressions end-compiler
-/* Compiling Expressions end-compiler < Calls and Functions not-yet
+/* Compiling Expressions end-compiler < Calls and Functions end-compiler
 static void endCompiler() {
 */
-//> Calls and Functions not-yet
+//> Calls and Functions end-compiler
 static ObjFunction* endCompiler() {
-//< Calls and Functions not-yet
+//< Calls and Functions end-compiler
   emitReturn();
-//> Calls and Functions not-yet
-
+//> Calls and Functions end-function
   ObjFunction* function = current->function;
-//< Calls and Functions not-yet
+
+//< Calls and Functions end-function
 //> dump-chunk
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
-/* Compiling Expressions dump-chunk < Calls and Functions not-yet
+/* Compiling Expressions dump-chunk < Calls and Functions disassemble-end
     disassembleChunk(currentChunk(), "code");
 */
-//> Calls and Functions not-yet
+//> Calls and Functions disassemble-end
     disassembleChunk(currentChunk(),
-        function->name != NULL ? function->name->chars : "<top>");
-//< Calls and Functions not-yet
+        function->name != NULL ? function->name->chars : "<script>");
+//< Calls and Functions disassemble-end
   }
 #endif
 //< dump-chunk
-//> Calls and Functions not-yet
-  current = current->enclosing;
+//> Calls and Functions return-function
 
+//> restore-enclosing
+  current = current->enclosing;
+//< restore-enclosing
   return function;
-//< Calls and Functions not-yet
+//< Calls and Functions return-function
 }
 //< Compiling Expressions end-compiler
 //> Local Variables begin-scope
@@ -406,7 +392,7 @@ static void beginScope() {
 static void endScope() {
   current->scopeDepth--;
 //> pop-locals
-  
+
   while (current->localCount > 0 &&
          current->locals[current->localCount - 1].depth >
             current->scopeDepth) {
@@ -558,7 +544,10 @@ static void declareVariable() {
 //> existing-in-scope
   for (int i = current->localCount - 1; i >= 0; i--) {
     Local* local = &current->locals[i];
-    if (local->depth != -1 && local->depth < current->scopeDepth) break;
+    if (local->depth != -1 && local->depth < current->scopeDepth) {
+      break; // [negative]
+    }
+    
     if (identifiersEqual(name, &local->name)) {
       error("Variable with this name already declared in this scope.");
     }
@@ -572,10 +561,10 @@ static void declareVariable() {
 static uint8_t parseVariable(const char* errorMessage) {
   consume(TOKEN_IDENTIFIER, errorMessage);
 //> Local Variables parse-local
-  
+
   declareVariable();
   if (current->scopeDepth > 0) return 0;
-  
+
 //< Local Variables parse-local
   return identifierConstant(&parser.previous);
 }
@@ -596,48 +585,41 @@ static void defineVariable(uint8_t global) {
 //< define-local
     return;
   }
-  
+
 //< Local Variables define-variable
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 //< Global Variables define-variable
-//> Calls and Functions not-yet
+//> Calls and Functions argument-list
 static uint8_t argumentList() {
   uint8_t argCount = 0;
   if (!check(TOKEN_RIGHT_PAREN)) {
     do {
       expression();
-      argCount++;
+//> arg-limit
 
-      if (argCount > 8) {
-        error("Cannot have more than 8 arguments.");
+      if (argCount == 255) {
+        error("Cannot have more than 255 arguments.");
       }
+//< arg-limit
+      argCount++;
     } while (match(TOKEN_COMMA));
   }
 
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
   return argCount;
 }
-//< Calls and Functions not-yet
-//> Jumping Forward and Back not-yet
+//< Calls and Functions argument-list
+//> Jumping Back and Forth and
 static void and_(bool canAssign) {
-  // left operand...
-  // OP_JUMP_IF       ------.
-  // OP_POP // left operand |
-  // right operand...       |
-  //   <--------------------'
-  // ...
-
-  // Short circuit if the left operand is false.
   int endJump = emitJump(OP_JUMP_IF_FALSE);
 
-  // Compile the right operand.
-  emitByte(OP_POP); // Left operand.
+  emitByte(OP_POP);
   parsePrecedence(PREC_AND);
 
   patchJump(endJump);
 }
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth and
 //> Compiling Expressions binary
 /* Compiling Expressions binary < Global Variables binary
 static void binary() {
@@ -671,12 +653,12 @@ static void binary(bool canAssign) {
   }
 }
 //< Compiling Expressions binary
-//> Calls and Functions not-yet
+//> Calls and Functions compile-call
 static void call(bool canAssign) {
   uint8_t argCount = argumentList();
-  emitByte(OP_CALL_0 + argCount);
+  emitBytes(OP_CALL, argCount);
 }
-//< Calls and Functions not-yet
+//< Calls and Functions compile-call
 //> Classes and Instances not-yet
 static void dot(bool canAssign) {
   consume(TOKEN_IDENTIFIER, "Expect property name after '.'.");
@@ -688,7 +670,8 @@ static void dot(bool canAssign) {
 //> Methods and Initializers not-yet
   } else if (match(TOKEN_LEFT_PAREN)) {
     uint8_t argCount = argumentList();
-    emitBytes(OP_INVOKE_0 + argCount, name);
+    emitBytes(OP_INVOKE, argCount);
+    emitByte(name);
 //< Methods and Initializers not-yet
   } else {
     emitBytes(OP_GET_PROPERTY, name);
@@ -738,32 +721,18 @@ static void number(bool canAssign) {
 //< Types of Values const-number-val
 }
 //< Compiling Expressions number
-//> Jumping Forward and Back not-yet
+//> Jumping Back and Forth or
 static void or_(bool canAssign) {
-  // left operand...
-  // OP_JUMP_IF       ---.
-  // OP_JUMP          ---+--.
-  //   <-----------------'  |
-  // OP_POP // left operand |
-  // right operand...       |
-  //   <--------------------'
-  // ...
-
-  // If the operand is *true* we want to keep it, so when it's false,
-  // jump to the code to evaluate the right operand.
   int elseJump = emitJump(OP_JUMP_IF_FALSE);
-
-  // If we get here, the operand is true, so jump to the end to keep it.
   int endJump = emitJump(OP_JUMP);
 
-  // Compile the right operand.
   patchJump(elseJump);
-  emitByte(OP_POP); // Left operand.
+  emitByte(OP_POP);
 
   parsePrecedence(PREC_OR);
   patchJump(endJump);
 }
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth or
 /* Strings parse-string < Global Variables string
 static void string() {
 */
@@ -873,7 +842,8 @@ static void super_(bool canAssign) {
     uint8_t argCount = argumentList();
 
     pushSuperclass();
-    emitBytes(OP_SUPER_0 + argCount, name);
+    emitBytes(OP_SUPER, argCount);
+    emitByte(name);
   } else {
     pushSuperclass();
     emitBytes(OP_GET_SUPER, name);
@@ -919,18 +889,18 @@ static void unary(bool canAssign) {
 //< Compiling Expressions unary
 //> Compiling Expressions rules
 ParseRule rules[] = {
-/* Compiling Expressions rules < Calls and Functions not-yet
-  { grouping, NULL,    PREC_CALL },       // TOKEN_LEFT_PAREN
+/* Compiling Expressions rules < Calls and Functions infix-left-paren
+  { grouping, NULL,    PREC_NONE },       // TOKEN_LEFT_PAREN
 */
-//> Calls and Functions not-yet
+//> Calls and Functions infix-left-paren
   { grouping, call,    PREC_CALL },       // TOKEN_LEFT_PAREN
-//< Calls and Functions not-yet
+//< Calls and Functions infix-left-paren
   { NULL,     NULL,    PREC_NONE },       // TOKEN_RIGHT_PAREN
   { NULL,     NULL,    PREC_NONE },       // TOKEN_LEFT_BRACE [big]
   { NULL,     NULL,    PREC_NONE },       // TOKEN_RIGHT_BRACE
   { NULL,     NULL,    PREC_NONE },       // TOKEN_COMMA
 /* Compiling Expressions rules < Classes and Instances not-yet
-  { NULL,     NULL,    PREC_CALL },       // TOKEN_DOT
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_DOT
 */
 //> Classes and Instances not-yet
   { NULL,     dot,     PREC_CALL },       // TOKEN_DOT
@@ -947,18 +917,18 @@ ParseRule rules[] = {
   { unary,    NULL,    PREC_NONE },       // TOKEN_BANG
 //< Types of Values table-not
 /* Compiling Expressions rules < Types of Values table-equal
-  { NULL,     NULL,    PREC_EQUALITY },   // TOKEN_BANG_EQUAL
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_BANG_EQUAL
 */
 //> Types of Values table-equal
   { NULL,     binary,  PREC_EQUALITY },   // TOKEN_BANG_EQUAL
 //< Types of Values table-equal
   { NULL,     NULL,    PREC_NONE },       // TOKEN_EQUAL
 /* Compiling Expressions rules < Types of Values table-comparisons
-  { NULL,     NULL,    PREC_EQUALITY },   // TOKEN_EQUAL_EQUAL
-  { NULL,     NULL,    PREC_COMPARISON }, // TOKEN_GREATER
-  { NULL,     NULL,    PREC_COMPARISON }, // TOKEN_GREATER_EQUAL
-  { NULL,     NULL,    PREC_COMPARISON }, // TOKEN_LESS
-  { NULL,     NULL,    PREC_COMPARISON }, // TOKEN_LESS_EQUAL
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_EQUAL_EQUAL
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_GREATER
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_GREATER_EQUAL
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_LESS
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_LESS_EQUAL
 */
 //> Types of Values table-comparisons
   { NULL,     binary,  PREC_EQUALITY },   // TOKEN_EQUAL_EQUAL
@@ -980,12 +950,12 @@ ParseRule rules[] = {
   { string,   NULL,    PREC_NONE },       // TOKEN_STRING
 //< Strings table-string
   { number,   NULL,    PREC_NONE },       // TOKEN_NUMBER
-/* Compiling Expressions rules < Jumping Forward and Back not-yet
-  { NULL,     NULL,    PREC_AND },        // TOKEN_AND
+/* Compiling Expressions rules < Jumping Back and Forth table-and
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_AND
 */
-//> Jumping Forward and Back not-yet
+//> Jumping Back and Forth table-and
   { NULL,     and_,    PREC_AND },        // TOKEN_AND
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth table-and
   { NULL,     NULL,    PREC_NONE },       // TOKEN_CLASS
   { NULL,     NULL,    PREC_NONE },       // TOKEN_ELSE
 /* Compiling Expressions rules < Types of Values table-false
@@ -1003,12 +973,12 @@ ParseRule rules[] = {
 //> Types of Values table-nil
   { literal,  NULL,    PREC_NONE },       // TOKEN_NIL
 //< Types of Values table-nil
-/* Compiling Expressions rules < Jumping Forward and Back not-yet
-  { NULL,     NULL,    PREC_OR },         // TOKEN_OR
+/* Compiling Expressions rules < Jumping Back and Forth table-or
+  { NULL,     NULL,    PREC_NONE },       // TOKEN_OR
 */
-//> Jumping Forward and Back not-yet
+//> Jumping Back and Forth table-or
   { NULL,     or_,     PREC_OR },         // TOKEN_OR
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth table-or
   { NULL,     NULL,    PREC_NONE },       // TOKEN_PRINT
   { NULL,     NULL,    PREC_NONE },       // TOKEN_RETURN
 /* Compiling Expressions rules < Superclasses not-yet
@@ -1102,14 +1072,15 @@ static void block() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 //< Local Variables block
-//> Calls and Functions not-yet
+//> Calls and Functions compile-function
 static void function(FunctionType type) {
   Compiler compiler;
-  initCompiler(&compiler, 1, type);
+  initCompiler(&compiler, type);
+  beginScope();
 
   // Compile the parameter list.
   consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
-
+//> parameters
   if (!check(TOKEN_RIGHT_PAREN)) {
     do {
       uint8_t paramConstant = parseVariable("Expect parameter name.");
@@ -1121,7 +1092,7 @@ static void function(FunctionType type) {
       }
     } while (match(TOKEN_COMMA));
   }
-
+//< parameters
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
 
   // The body.
@@ -1129,9 +1100,8 @@ static void function(FunctionType type) {
   block();
 
   // Create the function object.
-  endScope();
   ObjFunction* function = endCompiler();
-/* Calls and Functions not-yet < Closures not-yet
+/* Calls and Functions compile-function < Closures not-yet
   emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
 */
 //> Closures not-yet
@@ -1147,7 +1117,7 @@ static void function(FunctionType type) {
   }
 //< Closures not-yet
 }
-//< Calls and Functions not-yet
+//< Calls and Functions compile-function
 //> Methods and Initializers not-yet
 static void method() {
   consume(TOKEN_IDENTIFIER, "Expect method name.");
@@ -1189,17 +1159,14 @@ static void classDeclaration() {
   currentClass = &classCompiler;
 
 //< Methods and Initializers not-yet
-/* Classes and Instances not-yet < Superclasses not-yet
-  emitBytes(OP_CLASS, nameConstant);
-*/
 //> Superclasses not-yet
   if (match(TOKEN_LESS)) {
     consume(TOKEN_IDENTIFIER, "Expect superclass name.");
-    
+
     if (identifiersEqual(&className, &parser.previous)) {
       error("A class cannot inherit from itself.");
     }
-    
+
     classCompiler.hasSuperclass = true;
 
     beginScope();
@@ -1234,14 +1201,14 @@ static void classDeclaration() {
 //< Methods and Initializers not-yet
 }
 //< Classes and Instances not-yet
-//> Calls and Functions not-yet
+//> Calls and Functions fun-declaration
 static void funDeclaration() {
   uint8_t global = parseVariable("Expect function name.");
   markInitialized();
   function(TYPE_FUNCTION);
   defineVariable(global);
 }
-//< Calls and Functions not-yet
+//< Calls and Functions fun-declaration
 //> Global Variables var-declaration
 static void varDeclaration() {
   uint8_t global = parseVariable("Expect variable name.");
@@ -1263,27 +1230,17 @@ static void expressionStatement() {
   emitByte(OP_POP);
 }
 //< Global Variables expression-statement
-//> Jumping Forward and Back not-yet
+//> Jumping Back and Forth for-statement
 static void forStatement() {
-  // for (var i = 0; i < 10; i = i + 1) print i;
-  //
-  //   var i = 0;
-  // start:                      <--.
-  //   if (i < 10) goto exit;  --.  |
-  //   goto body;  -----------.  |  |
-  // increment:            <--+--+--+--.
-  //   i = i + 1;             |  |  |  |
-  //   goto start;  ----------+--+--'  |
-  // body:                 <--'  |     |
-  //   print i;                  |     |
-  //   goto increment;  ---------+-----'
-  // exit:                    <--'
-
-  // Create a scope for the loop variable.
+//> for-begin-scope
   beginScope();
 
-  // The initialization clause.
+//< for-begin-scope
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+/* Jumping Back and Forth for-statement < Jumping Back and Forth for-initializer
+  consume(TOKEN_SEMICOLON, "Expect ';'.");
+*/
+//> for-initializer
   if (match(TOKEN_VAR)) {
     varDeclaration();
   } else if (match(TOKEN_SEMICOLON)) {
@@ -1291,10 +1248,14 @@ static void forStatement() {
   } else {
     expressionStatement();
   }
+//< for-initializer
 
   int loopStart = currentChunk()->count;
 
-  // The exit condition.
+/* Jumping Back and Forth for-statement < Jumping Back and Forth for-exit
+  consume(TOKEN_SEMICOLON, "Expect ';'.");
+*/
+//> for-exit
   int exitJump = -1;
   if (!match(TOKEN_SEMICOLON)) {
     expression();
@@ -1305,10 +1266,12 @@ static void forStatement() {
     emitByte(OP_POP); // Condition.
   }
 
-  // Increment step.
+//< for-exit
+/* Jumping Back and Forth for-statement < Jumping Back and Forth for-increment
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+*/
+//> for-increment
   if (!match(TOKEN_RIGHT_PAREN)) {
-    // We don't want to execute the increment before the body, so jump
-    // over it.
     int bodyJump = emitJump(OP_JUMP);
 
     int incrementStart = currentChunk()->count;
@@ -1316,54 +1279,57 @@ static void forStatement() {
     emitByte(OP_POP);
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
 
-    // After the increment, start the whole loop over.
     emitLoop(loopStart);
-
-    // At the end of the body, we want to jump to the increment, not
-    // the top of the loop.
     loopStart = incrementStart;
-
     patchJump(bodyJump);
   }
+//< for-increment
 
-  // Compile the body.
   statement();
 
-  // Jump back to the beginning (or the increment).
   emitLoop(loopStart);
+//> exit-jump
 
   if (exitJump != -1) {
     patchJump(exitJump);
     emitByte(OP_POP); // Condition.
   }
+//< exit-jump
+//> for-end-scope
 
-  endScope(); // Loop variable.
+  endScope();
+//< for-end-scope
 }
-
+//< Jumping Back and Forth for-statement
+//> Jumping Back and Forth if-statement
 static void ifStatement() {
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
   expression();
-  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition."); // [paren]
 
-  // Jump to the else branch if the condition is false.
-  int elseJump = emitJump(OP_JUMP_IF_FALSE);
-
-  // Compile the then branch.
-  emitByte(OP_POP); // Condition.
+  int thenJump = emitJump(OP_JUMP_IF_FALSE);
+//> pop-then
+  emitByte(OP_POP);
+//< pop-then
   statement();
 
-  // Jump over the else branch when the if branch is taken.
-  int endJump = emitJump(OP_JUMP);
+//> jump-over-else
+  int elseJump = emitJump(OP_JUMP);
 
-  // Compile the else branch.
-  patchJump(elseJump);
-  emitByte(OP_POP); // Condition.
+//< jump-over-else
+  patchJump(thenJump);
+//> pop-end
+  emitByte(OP_POP);
+//< pop-end
+//> compile-else
 
   if (match(TOKEN_ELSE)) statement();
-
-  patchJump(endJump);
+//< compile-else
+//> patch-else
+  patchJump(elseJump);
+//< patch-else
 }
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth if-statement
 //> Global Variables print-statement
 static void printStatement() {
   expression();
@@ -1371,12 +1337,14 @@ static void printStatement() {
   emitByte(OP_PRINT);
 }
 //< Global Variables print-statement
-//> Calls and Functions not-yet
+//> Calls and Functions return-statement
 static void returnStatement() {
-  if (current->type == TYPE_TOP_LEVEL) {
+//> return-from-script
+  if (current->type == TYPE_SCRIPT) {
     error("Cannot return from top-level code.");
   }
 
+//< return-from-script
   if (match(TOKEN_SEMICOLON)) {
     emitReturn();
   } else {
@@ -1391,29 +1359,30 @@ static void returnStatement() {
     emitByte(OP_RETURN);
   }
 }
-//< Calls and Functions not-yet
-//> Jumping Forward and Back not-yet
+//< Calls and Functions return-statement
+//> Jumping Back and Forth while-statement
 static void whileStatement() {
+//> loop-start
   int loopStart = currentChunk()->count;
 
+//< loop-start
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
   expression();
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
 
-  // Jump out of the loop if the condition is false.
   int exitJump = emitJump(OP_JUMP_IF_FALSE);
 
-  // Compile the body.
-  emitByte(OP_POP); // Condition.
+  emitByte(OP_POP);
   statement();
+//> loop
 
-  // Loop back to the start.
   emitLoop(loopStart);
+//< loop
 
   patchJump(exitJump);
-  emitByte(OP_POP); // Condition.
+  emitByte(OP_POP);
 }
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth while-statement
 //> Global Variables synchronize
 static void synchronize() {
   parser.panicMode = false;
@@ -1446,18 +1415,18 @@ static void declaration() {
 //> Classes and Instances not-yet
   if (match(TOKEN_CLASS)) {
     classDeclaration();
-/* Calls and Functions not-yet < Classes and Instances not-yet
+/* Calls and Functions match-fun < Classes and Instances not-yet
   if (match(TOKEN_FUN)) {
 */
   } else if (match(TOKEN_FUN)) {
 //< Classes and Instances not-yet
-//> Calls and Functions not-yet
+//> Calls and Functions match-fun
     funDeclaration();
-/* Global Variables match-var < Calls and Functions not-yet
+/* Global Variables match-var < Calls and Functions match-fun
   if (match(TOKEN_VAR)) {
 */
   } else if (match(TOKEN_VAR)) {
-//< Calls and Functions not-yet
+//< Calls and Functions match-fun
 //> match-var
     varDeclaration();
   } else {
@@ -1475,48 +1444,47 @@ static void declaration() {
 //< Global Variables declaration
 //> Global Variables statement
 static void statement() {
-/* Global Variables statement < Jumping Forward and Back not-yet
   if (match(TOKEN_PRINT)) {
-*/
-//> Jumping Forward and Back not-yet
-  if (match(TOKEN_FOR)) {
+    printStatement();
+//> Jumping Back and Forth parse-for
+  } else if (match(TOKEN_FOR)) {
     forStatement();
+//< Jumping Back and Forth parse-for
+//> Jumping Back and Forth parse-if
   } else if (match(TOKEN_IF)) {
     ifStatement();
-  } else if (match(TOKEN_PRINT)) {
-//< Jumping Forward and Back not-yet
-    printStatement();
-//> Calls and Functions not-yet
+//< Jumping Back and Forth parse-if
+//> Calls and Functions match-return
   } else if (match(TOKEN_RETURN)) {
     returnStatement();
-//< Calls and Functions not-yet
-//> Jumping Forward and Back not-yet
+//< Calls and Functions match-return
+//> Jumping Back and Forth parse-while
   } else if (match(TOKEN_WHILE)) {
     whileStatement();
-//< Jumping Forward and Back not-yet
+//< Jumping Back and Forth parse-while
 //> Local Variables parse-block
   } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
     block();
     endScope();
 //< Local Variables parse-block
+//> parse-expressions-statement
   } else {
     expressionStatement();
+//< parse-expressions-statement
   }
 }
 //< Global Variables statement
-/* Scanning on Demand compiler-c < Compiling Expressions compile-signature
 
+/* Scanning on Demand compiler-c < Compiling Expressions compile-signature
 void compile(const char* source) {
 */
-/* Compiling Expressions compile-signature < Calls and Functions not-yet
-
+/* Compiling Expressions compile-signature < Calls and Functions compile-signature
 bool compile(const char* source, Chunk* chunk) {
 */
-//> Calls and Functions not-yet
-
+//> Calls and Functions compile-signature
 ObjFunction* compile(const char* source) {
-//< Calls and Functions not-yet
+//< Calls and Functions compile-signature
   initScanner(source);
 /* Scanning on Demand dump-tokens < Compiling Expressions compile-chunk
   int line = -1;
@@ -1536,18 +1504,18 @@ ObjFunction* compile(const char* source) {
 //> Local Variables compiler
   Compiler compiler;
 //< Local Variables compiler
-/* Local Variables compiler < Calls and Functions not-yet
+/* Local Variables compiler < Calls and Functions call-init-compiler
   initCompiler(&compiler);
 */
-//> Calls and Functions not-yet
-  initCompiler(&compiler, 0, TYPE_TOP_LEVEL);
-//< Calls and Functions not-yet
+//> Calls and Functions call-init-compiler
+  initCompiler(&compiler, TYPE_SCRIPT);
+//< Calls and Functions call-init-compiler
+/* Compiling Expressions init-compile-chunk < Calls and Functions call-init-compiler
+  compilingChunk = chunk;
+*/
 //> Compiling Expressions compile-chunk
 //> init-parser-error
 
-/* Compiling Expressions init-compile-chunk < Calls and Functions not-yet
-  compilingChunk = chunk;
-*/
   parser.hadError = false;
   parser.panicMode = false;
 
@@ -1565,19 +1533,16 @@ ObjFunction* compile(const char* source) {
   }
 
 //< Global Variables compile
-/* Compiling Expressions finish-compile < Calls and Functions not-yet
+/* Compiling Expressions finish-compile < Calls and Functions call-end-compiler
   endCompiler();
 */
-/* Compiling Expressions return-had-error < Calls and Functions not-yet
+/* Compiling Expressions return-had-error < Calls and Functions call-end-compiler
   return !parser.hadError;
 */
-//> Calls and Functions not-yet
+//> Calls and Functions call-end-compiler
   ObjFunction* function = endCompiler();
-
-  // If there was a compile error, the code is not valid, so don't
-  // create a function.
   return parser.hadError ? NULL : function;
-//< Calls and Functions not-yet
+//< Calls and Functions call-end-compiler
 }
 //> Garbage Collection not-yet
 

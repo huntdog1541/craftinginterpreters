@@ -724,15 +724,15 @@ support: removing an entry. This seems pretty obvious, if you can add things,
 you should be able to *un*-add them, right? But you'd be surprised how many
 tutorials on hash tables omit this.
 
-I could have taken that route too. In fact, we never actually *use* deletion in
-clox. But if you want to actually understand how to completely implement a hash
-table, this feels important. I can sympathize with their desire to overlook it.
-As we'll see, deleting from a hash table that uses <span
-name="delete">open</span> addressing is tricky.
+I could have taken that route too. In fact, we only use deletion in clox in a
+tiny edge case in the VM. But if you want to actually understand how to
+completely implement a hash table, this feels important. I can sympathize with
+their desire to overlook it. As we'll see, deleting from a hash table that uses
+<span name="delete">open</span> addressing is tricky.
 
 <aside name="delete">
 
-With separate chaining, deleting is as simple as remove a node from a linked
+With separate chaining, deleting is as simple as removing a node from a linked
 list.
 
 </aside>
@@ -1055,8 +1055,8 @@ then *everything* is slow.
 
 1.  In clox, we happen to only need keys that are strings, so the hash table we
     built is hardcoded for that key type. If we exposed hash tables to Lox users
-    as a first-class collection, it would useful to support different kinds of
-    keys.
+    as a first-class collection, it would be useful to support different kinds
+    of keys.
 
     Add support for keys of the other primitive types: numbers, Booleans, and
     `nil`. Later, clox will support user-defined classes. If we want to support
